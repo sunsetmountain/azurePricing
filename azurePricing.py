@@ -1,27 +1,42 @@
+# Azure pricing overview - https://learn.microsoft.com/en-us/rest/api/cost-management/retail-prices/azure-retail-prices
+
+
 import requests
 import json
 import pandas as pd
 import os
 from pathlib import Path
 import time
+from datetime import datetime
 import random
 
 def main():
-    # Set the file location and filename to save files
-    filelocation = str(Path(__file__).parent.parent) + "/azurePricing/"
-    filename = 'azurePrices'
+    startTime = datetime.today()
+    print(f"Started at: {startTime}")
 
+    num_skus = readPricingFile()
+
+    print(f"Number of SKUs: {num_skus}")
+
+    stopTime = datetime.today()
+
+    print(f"Finished at: {stopTime}")
+    print(f"Processing time: {stopTime - startTime}")
+
+def readPricingFile():
     # Call the Azure Retail Prices API
-    base_url = "https://prices.azure.com/api/retail/prices"
-    #url_filters = "?$filter= armRegionName eq 'southcentralus' and serviceName eq 'Virtual Machines'" #filtered results are possible too
-    url_filters = ""
-    request_url = base_url + url_filters
-    response = requests.get(request_url)
+    #response = requests.get("https://prices.azure.com/api/retail/prices?$filter= armRegionName eq 'southcentralus' and serviceName eq 'Virtual Machines'")
+    response = requests.get("https://prices.azure.com/api/retail/prices")
+
+
+    # Set your file location and filename to save your json and excel file
+    filelocation = str(Path(__file__).parent) + "/"
+    filename = 'azurePrices'
 
     # Create an array to store price list
     priceitems= []
 
-    # Add the retail prices returned in the API response to a list
+    #Add the retail prices returned in the API response to a list
     for i in response.json()['Items']:
         priceitems.append(i)
 
@@ -33,7 +48,7 @@ def main():
             priceitems.append(i)
         response = requests.get(response.json()["NextPageLink"])
         print(response.json()["NextPageLink"])
-        #time.sleep(random.randint(2,7)) #slow down API calls
+        time.sleep(random.randint(2,7))
 
     # Retrieve price list from the last page when there is no "NextPageLink" available to retrieve prices
     if response.json()["NextPageLink"] == None:
@@ -52,10 +67,12 @@ def main():
     df = pd.json_normalize(raw)
 
     ## Save the data frame as an excel file
-    #df.to_excel(os.path.join(filelocation,filename) + '.xlsx', sheet_name='RetailPrices', index=False)
+    #df.to_excel(os.path.join(filelocation,filename) + '.xlsx', sheet_name='azurePrices', index=False)
 
     # Save the data frame as a CSV file
     df.to_csv(os.path.join(filelocation,filename) + '.csv', index=False)
+
+    return len(df.index)
 
 if __name__ == "__main__":
     main()
